@@ -17,7 +17,7 @@ import os
 
 def main(run_id):
     llm = HttpsApi(host='api.bltcy.ai',  # your host endpoint, e.g., api.openai.com/v1/completions, api.deepseek.com
-                   key='sk-0hCjhh3wBUP7H2TQF9B6D290Ee604cAc88633dDc5f68B0Ed',  # your key, e.g., sk-abcdefghijklmn
+                   key='sk-GYO9mUQ6DelPSAHv6APqNEq4muMWyf12c3R41rRwaEm4VdXs',  # your key, e.g., sk-abcdefghijklmn
                    model='gpt-4o-mini',  # your llm, e.g., gpt-3.5-turbo, deepseek-chat
                    timeout=120)
 
