@@ -20,7 +20,7 @@ def main(run_id):
                    key='sk-GYO9mUQ6DelPSAHv6APqNEq4muMWyf12c3R41rRwaEm4VdXs',  # your key, e.g., sk-abcdefghijklmn
                    model='gpt-5-mini',  # your llm, e.g., gpt-3.5-turbo, deepseek-chat
                    timeout=120)
-    log_dir = f'log/Eoh/{run_id}'  # Use run_id to avoid overwriting logs
+    log_dir = f'log/MEoh/{run_id}'  # Use run_id to avoid overwriting logs
 
     balanced_training_set = [
         './balanced_trainingset/cvrp_clustered_cap30-60_n30-60_num20_train.pkl',
