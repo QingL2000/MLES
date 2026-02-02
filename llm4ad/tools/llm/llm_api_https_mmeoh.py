@@ -67,7 +67,7 @@ class HttpsApi(LLM):
             try:
                 conn = http.client.HTTPSConnection(self._host, timeout=self._timeout)
                 payload = json.dumps({
-                    'max_tokens': self._kwargs.get('max_tokens', 4096),
+                    'max_tokens': self._kwargs.get('max_tokens', 8192),
                     'top_p': self._kwargs.get('top_p', None),
                     'temperature': self._kwargs.get('temperature', 1.0),
                     'model': self._model,
