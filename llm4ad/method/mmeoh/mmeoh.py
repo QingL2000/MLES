@@ -15,6 +15,9 @@ from ...base import (
 )
 from ...tools.profiler import ProfilerBase
 import itertools
+import os
+import re
+import json
 
 
 class MMEoH:
@@ -517,7 +520,22 @@ class MMEoH:
         for t in sampler_threads:
             t.join()
 
-    def run(self):
+    def run(self, mode: Literal['Training', 'Using', 'Combined'] = 'Training', **kwargs):
+        if mode == 'Training':
+            print("🚀 Starting Training Mode...")
+            self._training_flow()
+        elif mode == 'Using':
+            print("💡 Starting Using Mode...")
+            # generalist_protection = kwargs.get('generalist_protection', True)
+            # matching_feature = kwargs.get('matching_feature', 'anchor')
+            leader_top_k = kwargs.get('leader_top_k', 1)
+            worst_case_percent = kwargs.get('worst_case_percent', 10)
+            print(f'Using algorithms from 🚀 {self._profiler._log_dir} 🚀 to solve new instances.')
+
+            self._using_flow(top_k=leader_top_k,
+                             worst_case_percent=worst_case_percent)
+
+    def _training_flow(self):
         if not self._resume_mode:
             # do initialization
             self._multi_threaded_sampling(self._iteratively_init_population)
@@ -534,6 +552,181 @@ class MMEoH:
         # finish
         if self._profiler is not None:
             self._profiler.finish()
+
+    # 修改函数签名，增加 top_k 参数 (默认为 None，表示全部运行)
+    def _using_flow(self, worst_case_percent=10, top_k=None):
+        print(f"🔍 Loading model from {self._profiler._log_dir}...")
+        designed_results_path = os.path.join(self._profiler._log_dir, 'population')
+
+        # 1. Define the pattern to match 'pop_X.json' and capture 'X'
+        pattern = re.compile(r'^pop_(\d+)\.json$')
+
+        max_x = -1
+        latest_file = None
+
+        # 2. Check if the directory exists
+        if not os.path.isdir(designed_results_path):
+            print(f"Error: Directory not found: {designed_results_path}")
+            return  # Or raise an Exception
+
+        # 3. Iterate over files in the directory
+        for filename in os.listdir(designed_results_path):
+            match = pattern.match(filename)
+
+            # 4. If the filename matches
+            if match:
+                # Extract the number (group 1) and convert to int
+                current_x = int(match.group(1))
+
+                # 5. Check if it's the largest number found so far
+                if current_x > max_x:
+                    max_x = current_x
+                    latest_file = filename
+
+        # 6. Check if any matching file was found
+        if latest_file is None:
+            print(f"Error: No 'pop_x.json' files found in {designed_results_path}")
+            return  # Or raise an Exception
+
+        # 7. Construct the full path to the correct file
+        full_path_to_file = os.path.join(designed_results_path, latest_file)
+        print(f"Found latest file: {full_path_to_file}")
+
+        # --- End of file finding logic ---
+
+        with open(full_path_to_file, 'r') as f:
+            trained_data = json.load(f)
+
+        # ===================================================================
+        # [新增逻辑] Top-K 筛选
+        # ===================================================================
+        if top_k is not None and isinstance(top_k, int) and top_k > 0:
+            print(f"✂️  Filtering Population: Selecting top {top_k} algorithms...")
+            original_size = len(trained_data)
+
+            # 假设 json 中的每个 item 都有 'fitness' 字段。
+            # 如果是最大化问题 (score越高越好)，使用 reverse=True。
+            # 这里使用了 get('fitness', -inf) 防止字段缺失报错。
+            try:
+                trained_data.sort(key=lambda x: x.get('score', float('-inf')), reverse=True)
+
+                # 截取前 k 个
+                trained_data = trained_data[:top_k]
+                print(f"   -> Reduced population from {original_size} to {len(trained_data)}.")
+            except Exception as e:
+                print(f"   -> ⚠️ Warning: Could not sort by 'score'. Using original order. Error: {e}")
+        # ===================================================================
+
+        using_time_start = time.time()
+        print("💪 [Brute Force Mode] Evaluating selected algorithms on each instance...")
+
+        print(f"   -> Found {len(trained_data)} unique algorithms to test.")
+        ins_to_be_solve_set = self.evaluation_object.ins_to_be_solve_set
+        ins_to_be_solve_id_set = [id for id in ins_to_be_solve_set.keys()]
+
+        final_results = {}
+        all_scores = []
+
+        # --- b. 遍历每个实例，并用所有算法进行测试 ---
+        for instance_id in ins_to_be_solve_id_set:
+            print(f"\n[Brute Force] Solving new instance: {instance_id}")
+            best_algo_for_instance = None
+            best_score_for_instance = float('-inf')
+            best_perf_for_instance = None
+
+            for i, algo_json in enumerate(trained_data):
+                # 显示进度
+                print(f"  -> Testing algorithm {i + 1}/{len(trained_data)}...", end='\r')
+                try:
+                    program = TextFunctionProgramConverter.function_to_program(algo_json['function'],
+                                                                               self._template_program)
+                    func = TextFunctionProgramConverter.text_to_function(str(program))
+                    eval_result = self._evaluator._evaluate(str(program), func.name,
+                                                                              ins_to_be_evaluated_id=(instance_id,),
+                                                                              training_mode=False)
+
+                    score = eval_result.get('all_ins_performance').get(instance_id, {}).get('score', float('-inf'))
+                    # print(f'{i} score is ', score) # 可选：为了日志干净可以注释掉详细打印
+
+                    if score is not None and score > best_score_for_instance:
+                        print(f'   Update! New Best: {score:.4f} (Algo index: {i})')
+                        best_score_for_instance = score
+                        best_algo_for_instance = algo_json
+                        best_perf_for_instance = eval_result.get('all_ins_performance').get(instance_id, {})
+                except Exception as e:
+                    print(f"\n      -> ❌ Error evaluating algorithm on instance {instance_id}: {e}")
+            print()  # 换行
+
+            if best_algo_for_instance:
+                print(
+                    f"   -> ✅ Best score found: {best_score_for_instance:.4f}")
+                final_results[instance_id] = {
+                    'algorithm': best_algo_for_instance['algorithm'],
+                    'function': best_algo_for_instance['function'],
+                    'score': best_perf_for_instance.get('score'),
+                }
+                if best_perf_for_instance.get('score') is not None:
+                    all_scores.append(best_perf_for_instance['score'])
+            else:
+                final_results[instance_id] = {'score': None, 'evaluate_time': None}
+                print(f"   -> ⚠️ Warning: No algorithm produced a valid score for instance {instance_id}.")
+
+        # ===================================================================
+        # FINALIZE: 计算最终统计数据并保存
+        # ===================================================================
+        valid_scores = [s for s in all_scores if s is not None]
+
+        if valid_scores:
+            final_results['sum_score_of_all_instances'] = sum(valid_scores)
+            final_results['average_score_of_all_instances'] = sum(valid_scores) / len(valid_scores)
+        else:
+            final_results['sum_score_of_all_instances'] = None
+            final_results['average_score_of_all_instances'] = None
+
+        final_results['each_result'] = all_scores
+
+        # ... (此处省略 Worst-Case 统计代码，保持你原有的逻辑不变) ...
+        # 为了完整性，你可以直接把你的 Worst-Case 代码块放在这里
+        # ===================================================================
+        # [统计 Worst-Case (Bottom K%)]
+        # ===================================================================
+        id_score_pairs = []
+        for k, v in final_results.items():
+            if isinstance(k, int) and isinstance(v, dict) and v.get('score') is not None:
+                id_score_pairs.append((k, v['score']))
+        id_score_pairs.sort(key=lambda x: x[1])
+        total_valid_count = len(id_score_pairs)
+        cutoff_count = int(total_valid_count * (worst_case_percent / 100.0))
+        if cutoff_count == 0 and total_valid_count > 0:
+            cutoff_count = 1
+        worst_cases = id_score_pairs[:cutoff_count]
+        worst_instance_ids = [pair[0] for pair in worst_cases]
+        worst_scores_values = [pair[1] for pair in worst_cases]
+        worst_avg_score = sum(worst_scores_values) / len(worst_scores_values) if worst_scores_values else None
+
+        if worst_avg_score is not None:  # 加个判断防止打印 None
+            print(f"\n📉 [Worst-Case Stats] Bottom {worst_case_percent}% (Count: {len(worst_cases)}):")
+            print(f"   -> Average Score: {worst_avg_score}")
+
+        final_results['worst_case_stats'] = {
+            'percent_threshold': worst_case_percent,
+            'count': len(worst_cases),
+            'average_score': worst_avg_score,
+            'instance_ids': worst_instance_ids,
+            'scores': worst_scores_values
+        }
+        # ===================================================================
+
+        using_time_end = time.time()
+        final_results['running_time'] = using_time_end - using_time_start
+        print(f"Running time: {final_results['running_time']} seconds")
+
+        if self._profiler:
+            self._profiler.using_final(final_results=final_results)
+        print(f"\n💡 Using Mode finished.")
+
+        print(
+            f'There are {len(ins_to_be_solve_set)} instances to solve. \nSuccessfully solved {len(valid_scores)} instances, with an average score of {final_results["average_score_of_all_instances"]}.')
 
     def messages_to_string(self, messages, image_placeholder="<<<IMAGE>>>"):
         """

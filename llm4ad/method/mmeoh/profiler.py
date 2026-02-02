@@ -17,8 +17,6 @@ from ...tools.profiler import TensorboardProfiler, ProfilerBase, WandBProfiler
 
 
 class EoHProfiler(ProfilerBase):
-    _cur_gen = 0
-
     def __init__(self,
                  log_dir: Optional[str] = None,
                  *,
@@ -27,6 +25,7 @@ class EoHProfiler(ProfilerBase):
                  initial_num_samples=0,
                  log_style='complex',
                  create_random_path=True,
+                 run_mode='Training',
                  **kwargs):
         """EoH Profiler
         Args:
@@ -36,6 +35,15 @@ class EoHProfiler(ProfilerBase):
             initial_num_samples: the sample order start with `initial_num_samples`.
             create_random_path : create a random log_path according to evaluation_name, method_name, time, ...
         """
+        self.run_mode = run_mode
+        if self.run_mode == 'Using':
+            create_random_path = False
+            using_algo_designed_path = kwargs.get('using_algo_designed_path', '')
+            if using_algo_designed_path == '':
+                raise ValueError(f"You are using 'Using' mode but give no designed algorithm")
+            else:
+                log_dir = os.path.join(log_dir, using_algo_designed_path)
+
         super().__init__(evaluation_name=evaluation_name,
                          method_name=method_name,
                          log_dir=log_dir,
@@ -43,16 +51,24 @@ class EoHProfiler(ProfilerBase):
                          log_style=log_style,
                          create_random_path=create_random_path,
                          **kwargs)
+        self._cur_gen = 0
         self._pop_lock = Lock()
-        if self._log_dir:
-            self._ckpt_dir = os.path.join(self._log_dir, 'population')
-            os.makedirs(self._ckpt_dir, exist_ok=True)
+        if self.run_mode == 'Training' or self.run_mode == 'Combined':
+            if self._log_dir:
+                self._ckpt_dir = os.path.join(self._log_dir, 'population')
+                os.makedirs(self._ckpt_dir, exist_ok=True)
+                self._output_dir = os.path.join(self._log_dir, 'designed_result')
+                os.makedirs(self._output_dir, exist_ok=True)
+        if self.run_mode == 'Using' or self.run_mode == 'Combined':
+            if self._log_dir:
+                self._using_dir = os.path.join(self._log_dir, 'using', self._result_folder + '_U')
+                os.makedirs(self._using_dir, exist_ok=True)
 
     def register_population(self, pop: Population):
         try:
             self._pop_lock.acquire()
             if (self.__class__._num_samples == 0 or
-                    pop.generation == self.__class__._cur_gen):
+                    pop.generation == self._cur_gen):
                 return
             funcs = pop.population  # type: List[Function]
             funcs_json = []  # type: List[Dict]
@@ -88,7 +104,7 @@ class EoHProfiler(ProfilerBase):
             path = os.path.join(self._ckpt_dir, f'pop_{pop.generation}.json')
             with open(path, 'w') as json_file:
                 json.dump(funcs_json, json_file, indent=4)
-            self.__class__._cur_gen += 1
+            self._cur_gen += 1
 
         except Exception as e:
             print(f"Error occurred when register the population: {e}")
@@ -109,7 +125,7 @@ class EoHProfiler(ProfilerBase):
         if not self._log_dir:
             return
 
-        generation_num = self.__class__._cur_gen
+        generation_num = self._cur_gen
 
         sample_order = getattr(self.__class__, '_num_samples', 0)
         content = {
@@ -157,6 +173,13 @@ class EoHProfiler(ProfilerBase):
 
         with open(path, 'w') as json_file:
             json.dump(data, json_file, indent=4)
+
+    def using_final(self, **kwargs):
+        final_results = kwargs.get('final_results')
+        output_file_path = os.path.join(self._using_dir, 'using_final_output.json')
+        with open(output_file_path, 'w') as json_file:
+            json.dump(final_results, json_file, indent=4)
+
 
 
 class EoHTensorboardProfiler(TensorboardProfiler, EoHProfiler):

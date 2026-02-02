@@ -6,6 +6,7 @@ import sys
 import time
 from abc import ABC, abstractmethod
 from typing import Any, Literal
+import traceback
 
 from .code import TextFunctionProgramConverter, Program
 from .modify_code import ModifyCode
@@ -219,6 +220,9 @@ class SecureEvaluator:
         except Exception as e:
             if self._debug_mode:
                 print(e)
+            error_stack = traceback.format_exc()
+            print("Get error when evaluation")
+            print(error_stack)
             result_queue.put(None)
 
     def _evaluate(self, program_str: str, function_name, **kwargs):
