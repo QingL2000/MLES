@@ -390,9 +390,9 @@ class CVRPSEvaluation(Evaluation):
             return (dis, instance_performance)
         elif self.whocall in ['dyca']:
             return {'all_ins_performance': instance_performance, 'list_performance': dis}
-        elif self.whocall in ['eoh', 'reevo', 'funsearch']:
+        elif self.whocall in ['eoh', 'funsearch']:
             return np.mean(dis)
-        elif self.whocall in ['mmeoh']:
+        elif self.whocall in ['mmeoh', 'reevo']:
             return {'score': np.mean(dis), 'image': img_base64, 'observation': None,
                     'all_ins_performance': instance_performance, 'list_performance': dis}
         else:
