@@ -100,7 +100,7 @@ if __name__ == "__main__":
         'MEoH': [
             r'C:\0_QL_work\014_mmeoh\MLES\example\cvrplib\log\MEoh\0\20260203_111454_Problem_EoH'],
         'ReEvo': [
-            r'C:\0_QL_work\014_mmeoh\MLES\example\cvrplib\log\Reevo\0\20260203_174059_Problem_Method']
+            r'C:\0_QL_work\014_mmeoh\MLES\example\cvrplib\log\Reevo\0\20260203_175052_Problem_Method']
 
     }
     group1 = {
@@ -108,24 +108,33 @@ if __name__ == "__main__":
             r'C:\0_QL_work\014_mmeoh\MLES\example\cvrplib\log\Eoh\1\20260203_095229_Problem_EoH',
         ],
         'MEoH': [
-            r'C:\0_QL_work\014_mmeoh\MLES\example\cvrplib\log\MEoh\1\20260203_095233_Problem_EoH']
+            r'C:\0_QL_work\014_mmeoh\MLES\example\cvrplib\log\MEoh\1\20260203_095233_Problem_EoH'],
+        'ReEvo': [
+            r'C:\0_QL_work\014_mmeoh\MLES\example\cvrplib\log\Reevo\1\20260204_004000_Problem_Method']
+
     }
     group8 = {
         'EoH': [
             r'C:\0_QL_work\014_mmeoh\MLES\example\cvrplib\log\Eoh\8\20260202_232340_Problem_EoH',
         ],
         'MEoH': [
-            r'C:\0_QL_work\014_mmeoh\MLES\example\cvrplib\log\MEoh\8\20260202_231056_Problem_EoH']
+            r'C:\0_QL_work\014_mmeoh\MLES\example\cvrplib\log\MEoh\8\20260202_231056_Problem_EoH'],
+        'ReEvo': [
+            r'C:\0_QL_work\014_mmeoh\MLES\example\cvrplib\log\Reevo\8\20260203_175113_Problem_Method']
+
     }
     group9 = {
         'EoH': [
             r'C:\0_QL_work\014_mmeoh\MLES\example\cvrplib\log\Eoh\9\20260203_014353_Problem_EoH',
         ],
         'MEoH': [
-            r'C:\0_QL_work\014_mmeoh\MLES\example\cvrplib\log\MEoh\9\20260203_014357_Problem_EoH']
+            r'C:\0_QL_work\014_mmeoh\MLES\example\cvrplib\log\MEoh\9\20260203_014357_Problem_EoH'],
+        'ReEvo': [
+            r'C:\0_QL_work\014_mmeoh\MLES\example\cvrplib\log\Reevo\9\20260204_004022_Problem_Method']
+
     }
 
     groups = [group0, group1, group8, group9]
-    group_selected = groups[0]
+    group_selected = groups[3]
 
     analysis_method_performance(group_selected, sample_step=1000)

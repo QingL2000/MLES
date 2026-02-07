@@ -27,7 +27,7 @@ import concurrent.futures
 import time
 import traceback
 from threading import Thread
-from typing import Optional, Literal
+from typing import Optional, Literal, List
 
 from torch.utils.data import Sampler
 
@@ -43,6 +43,7 @@ from threading import Lock
 import os
 import re
 import json
+from collections import Counter # 引入计数器方便统计
 
 class ReEvo:
     def __init__(self,
@@ -339,7 +340,7 @@ class ReEvo:
         if self._profiler is not None:
             self._profiler.finish()
 
-    def using_flow(self, worst_case_percent=10, top_k=None):
+    def using_flow(self, worst_case_percent=10, top_k=None, max_gen=None):
         print(f"🔍 Loading model from {self._profiler._log_dir}...")
         designed_results_path = os.path.join(self._profiler._log_dir, 'population')
 
@@ -363,15 +364,23 @@ class ReEvo:
                 # Extract the number (group 1) and convert to int
                 current_x = int(match.group(1))
 
+                # --- [新增逻辑] 限制最大代数 ---
+                if max_gen is not None and current_x > max_gen:
+                    continue
+                    # ---------------------------
+
                 # 5. Check if it's the largest number found so far
                 if current_x > max_x:
                     max_x = current_x
                     latest_file = filename
 
         # 6. Check if any matching file was found
+        # 6. Check if any matching file was found
         if latest_file is None:
-            print(f"Error: No 'pop_x.json' files found in {designed_results_path}")
-            return  # Or raise an Exception
+            error_msg = f"No 'pop_x.json' files found"
+            if max_gen: error_msg += f" (with max_gen <= {max_gen})"
+            print(f"Error: {error_msg} in {designed_results_path}")
+            return
 
         # 7. Construct the full path to the correct file
         full_path_to_file = os.path.join(designed_results_path, latest_file)
@@ -426,18 +435,18 @@ class ReEvo:
                     program = TextFunctionProgramConverter.function_to_program(algo_json['function'],
                                                                                self._template_program)
                     func = TextFunctionProgramConverter.text_to_function(str(program))
-                    eval_result_list, eval_result = self._evaluator._evaluate(str(program), func.name,
-                                                                              ins_to_be_evaluated_id=(instance_id,),
-                                                                              training_mode=False)
+                    eval_result = self._evaluator._evaluate(str(program), func.name,
+                                                            ins_to_be_evaluated_id=(instance_id,),
+                                                            training_mode=False)
 
-                    score = eval_result.get(instance_id, {}).get('score', float('-inf'))
+                    score = eval_result.get('all_ins_performance').get(instance_id, {}).get('score', float('-inf'))
                     # print(f'{i} score is ', score) # 可选：为了日志干净可以注释掉详细打印
 
                     if score is not None and score > best_score_for_instance:
                         print(f'   Update! New Best: {score:.4f} (Algo index: {i})')
                         best_score_for_instance = score
                         best_algo_for_instance = algo_json
-                        best_perf_for_instance = eval_result[instance_id]
+                        best_perf_for_instance = eval_result.get('all_ins_performance').get(instance_id, {})
                 except Exception as e:
                     print(f"\n      -> ❌ Error evaluating algorithm on instance {instance_id}: {e}")
             print()  # 换行
@@ -513,3 +522,218 @@ class ReEvo:
         print(
             f'There are {len(ins_to_be_solve_set)} instances to solve. \nSuccessfully solved {len(valid_scores)} instances, with an average score of {final_results["average_score_of_all_instances"]}.')
 
+    def _Multi_using_flow(self, designed_results_paths: List[str], top_k=1, worst_case_percent=10,
+                          cvrplib_which='A', who='DontKnow', max_gen=None):  # <--- 1. 增加参数
+        """
+        Args:
+            designed_results_paths (List[str]): 包含多个实验日志根目录的列表。
+            top_k (int, optional): 从每个路径中筛选 Top K 个算法。
+            worst_case_percent (int): 统计最差百分比。
+        """
+
+        all_candidates = []  # 用于汇总所有路径下筛选出的 candidates
+
+        print(f"🚀 Starting Multi-Path Evaluation. Paths to check: {len(designed_results_paths)}")
+
+        # ===================================================================
+        # PART 1: 遍历所有路径，收集 Candidates 并打上来源标签
+        # ===================================================================
+        for path_idx, base_path in enumerate(designed_results_paths):
+            print(f"\n📂 [{path_idx + 1}/{len(designed_results_paths)}] Processing path: {base_path}")
+
+            population_dir = os.path.join(base_path, 'population')
+
+            if not os.path.isdir(population_dir):
+                print(f"   ⚠️  Warning: Directory not found, skipping: {population_dir}")
+                continue
+
+            pattern = re.compile(r'^pop_(\d+)\.json$')
+            max_x = -1
+            latest_file = None
+
+            # --- 2. 这里的循环逻辑加入 max_gen 限制 ---
+            for filename in os.listdir(population_dir):
+                match = pattern.match(filename)
+                if match:
+                    current_x = int(match.group(1))
+
+                    # 如果超过了限制的代数，直接跳过
+                    if max_gen is not None and current_x > max_gen:
+                        continue
+
+                    # 寻找限制范围内的最大代数
+                    if current_x > max_x:
+                        max_x = current_x
+                        latest_file = filename
+
+            if latest_file is None:
+                print(f"   ⚠️  Warning: No 'pop_x.json' files found in {population_dir}")
+                continue
+
+            full_path_to_file = os.path.join(population_dir, latest_file)
+            print(f"   -> Found latest file: {latest_file}")
+
+            try:
+                with open(full_path_to_file, 'r') as f:
+                    current_data = json.load(f)
+            except Exception as e:
+                print(f"   ❌ Error loading JSON: {e}")
+                continue
+
+            # --- Top-K 筛选 ---
+            if top_k is not None and isinstance(top_k, int) and top_k > 0:
+                original_size = len(current_data)
+                try:
+                    current_data.sort(key=lambda x: x.get('score', float('-inf')), reverse=True)
+                    selected_data = current_data[:top_k]
+                    print(f"   ✂️  Top-{top_k} Filter: Selected {len(selected_data)}/{original_size} algorithms.")
+                    current_data = selected_data
+                except Exception as e:
+                    print(f"   ⚠️  Sort failed, using original order: {e}")
+            else:
+                print(f"   -> Keeping all {len(current_data)} algorithms.")
+
+            # --- [关键修改] 给每个算法打上来源标签 ---
+            for algo in current_data:
+                # 记录完整路径，或者你也可以只记录文件夹名 os.path.basename(base_path)
+                algo['source_path'] = base_path
+
+            all_candidates.extend(current_data)
+
+        # ===================================================================
+        # PART 2: 统一进行评估 (Evaluation)
+        # ===================================================================
+
+        candidates_count = len(all_candidates)
+        if candidates_count == 0:
+            print("\n❌ Error: No valid algorithms found.")
+            return
+
+        print(f"\n✅ Collection Finished. Total algorithms to evaluate: {candidates_count}")
+
+        using_time_start = time.time()
+        ins_to_be_solve_set = self.evaluation_object.ins_to_be_solve_set
+        ins_to_be_solve_id_set = [id for id in ins_to_be_solve_set.keys()]
+
+        final_results = {}
+        all_scores = []
+
+        for instance_id in ins_to_be_solve_id_set:
+            print(f"\n[Brute Force] Solving new instance: {instance_id}")
+            best_algo_for_instance = None
+            best_score_for_instance = float('-inf')
+            best_perf_for_instance = None
+
+            for i, algo_json in enumerate(all_candidates):
+                print(f"  -> Testing algorithm {i + 1}/{candidates_count}...", end='\r')
+                try:
+                    program = TextFunctionProgramConverter.function_to_program(algo_json['function'],
+                                                                               self._template_program)
+                    func = TextFunctionProgramConverter.text_to_function(str(program))
+
+                    eval_result = self._evaluator._evaluate(str(program), func.name,
+                                                            ins_to_be_evaluated_id=(instance_id,),
+                                                            training_mode=False)
+
+                    score = eval_result.get('all_ins_performance').get(instance_id, {}).get('score', float('-inf'))
+
+                    if score is not None and score > best_score_for_instance:
+                        # 获取该算法的来源路径，仅用于打印日志
+                        src = algo_json.get('source_path', 'unknown')
+                        print(f'   Update! New Best: {score:.4f} (Algo index: {i}, Src: {src})')
+
+                        best_score_for_instance = score
+                        best_algo_for_instance = algo_json
+                        best_perf_for_instance = eval_result.get('all_ins_performance').get(instance_id, {})
+                except Exception as e:
+                    pass
+
+            print()
+
+            if best_algo_for_instance:
+                print(
+                    f"   -> ✅ Best: {best_score_for_instance:.4f} | Winner: {best_algo_for_instance.get('source_path')}")
+
+                # --- [关键修改] 将来源路径写入最终结果 ---
+                final_results[instance_id] = {
+                    'algorithm': best_algo_for_instance['algorithm'],
+                    'function': best_algo_for_instance['function'],
+                    'score': best_perf_for_instance.get('score'),
+                    'source_path': best_algo_for_instance.get('source_path')  # 这里记录胜出的路径
+                }
+                if best_perf_for_instance.get('score') is not None:
+                    all_scores.append(best_perf_for_instance['score'])
+            else:
+                final_results[instance_id] = {'score': None, 'evaluate_time': None, 'source_path': None}
+
+        # ===================================================================
+        # PART 3: 统计结果
+        # ===================================================================
+        valid_scores = [s for s in all_scores if s is not None]
+
+        if valid_scores:
+            final_results['sum_score_of_all_instances'] = sum(valid_scores)
+            final_results['average_score_of_all_instances'] = sum(valid_scores) / len(valid_scores)
+        else:
+            final_results['sum_score_of_all_instances'] = None
+            final_results['average_score_of_all_instances'] = None
+
+        final_results['each_result'] = all_scores
+
+        # --- Worst-Case Statistics ---
+        id_score_pairs = []
+        for k, v in final_results.items():
+            if isinstance(k, int) and isinstance(v, dict) and v.get('score') is not None:
+                id_score_pairs.append((k, v['score']))
+
+        id_score_pairs.sort(key=lambda x: x[1])
+        total_valid_count = len(id_score_pairs)
+        cutoff_count = int(total_valid_count * (worst_case_percent / 100.0))
+        if cutoff_count == 0 and total_valid_count > 0:
+            cutoff_count = 1
+
+        worst_cases = id_score_pairs[:cutoff_count]
+        worst_instance_ids = [pair[0] for pair in worst_cases]
+        worst_scores_values = [pair[1] for pair in worst_cases]
+        worst_avg_score = sum(worst_scores_values) / len(worst_scores_values) if worst_scores_values else None
+
+        final_results['worst_case_stats'] = {
+            'percent_threshold': worst_case_percent,
+            'count': len(worst_cases),
+            'average_score': worst_avg_score,
+            'instance_ids': worst_instance_ids,
+            'scores': worst_scores_values
+        }
+
+        using_time_end = time.time()
+        final_results['running_time'] = using_time_end - using_time_start
+
+        # ===================================================================
+        # PART 4: [新增] 路径胜率统计 (Source Path Distribution)
+        # ===================================================================
+        # 统计每个路径赢了多少次
+        winner_paths = []
+        for k, v in final_results.items():
+            # 确保 key 是 instance ID (int) 且有 source_path
+            if isinstance(k, int) and isinstance(v, dict) and v.get('source_path'):
+                winner_paths.append(v['source_path'])
+
+        path_counts = dict(Counter(winner_paths))
+
+        print("\n🏆 [Dominance Statistics] Who contributed the best solutions?")
+        for path, count in path_counts.items():
+            print(f"   -> {path}: {count} instances")
+
+        final_results['path_dominance_stats'] = path_counts
+        # ===================================================================
+
+        cvrplib_which_path = os.path.join('cvrplib_results', cvrplib_which)
+        os.makedirs(cvrplib_which_path, exist_ok=True)
+        output_file_path = os.path.join(cvrplib_which_path, f'using_final_output_{who}.json')
+
+        with open(output_file_path, 'w') as json_file:
+            json.dump(final_results, json_file, indent=4)
+
+        print(f"\n💡 Using Mode finished.")
+        print(
+            f'Solved {len(valid_scores)} instances. Avg Score: {final_results["average_score_of_all_instances"]}. Saved to {output_file_path}')

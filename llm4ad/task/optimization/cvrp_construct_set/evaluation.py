@@ -21,6 +21,7 @@ import pickle
 from typing import Optional, Tuple, List, Any, Set
 from io import BytesIO
 import base64
+import json
 
 
 class CVRPSEvaluation(Evaluation):
@@ -410,7 +411,8 @@ if __name__ == '__main__':
     import io
 
     balanced_training_set = [
-        './balanced_trainingset/cvrp_clustered_cap30-60_n30-60_num20_train.pkl',
+        # './balanced_trainingset/cvrp_clustered_cap30-60_n30-60_num20_train.pkl',
+        './balanced_trainingset/cvrp_uniform_cap100-300_n500-800_num20_train.pkl',
         # './balanced_trainingset/cvrp_clustered_cap30-60_n80-120_num20_train.pkl',
         # './balanced_trainingset/cvrp_clustered_cap30-60_n180-200_num20_train.pkl',
         # './balanced_trainingset/cvrp_clustered_cap90-110_n80-120_num20_train.pkl',
@@ -502,6 +504,27 @@ if __name__ == '__main__':
             print(f"无法直接弹出窗口: {e}")
     else:
         print("未获取到 Base64 图像数据。")
+
+    print(img_b64)
+
+    output_data = {
+        "image_type": "png",  # 或者是 jpg，取决于您的生成源
+        "image_base64": img_b64
+    }
+
+    filename = "eval_result_imgbase64.json"
+
+    try:
+        # 'w' 表示写入模式, encoding='utf-8' 确保字符编码正确
+        with open(filename, 'w', encoding='utf-8') as f:
+            # indent=4 让生成的 JSON 文件有缩进，方便人类阅读
+            # ensure_ascii=False 防止中文或其他非ASCII字符变成乱码
+            json.dump(output_data, f, indent=4, ensure_ascii=False)
+
+        print(f"✅ 成功！数据已保存到文件: {filename}")
+
+    except Exception as e:
+        print(f"❌ 保存 JSON 失败: {e}")
 
     # # --- 3. 提取一个实例进行可视化 ---
     # if len(eval.instance_set) > 0:

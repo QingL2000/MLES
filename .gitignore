@@ -22,4 +22,6 @@ GUI/outputs
 **/wandb
 **/test
 /.git
-/.gitattributes
+/.gitattributesgit
+**/cvrplib_test_set_X.pkl
+*.pkl

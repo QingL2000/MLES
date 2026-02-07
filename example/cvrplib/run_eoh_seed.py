@@ -23,7 +23,8 @@ def main(run_id):
     log_dir = f'log/Eoh/{run_id}'  # Use run_id to avoid overwriting logs
 
     balanced_training_set = [
-        './balanced_trainingset/cvrp_clustered_cap30-60_n30-60_num20_train.pkl',
+        './balanced_trainingset/cvrp_uniform_cap100-300_n500-800_num20_train.pkl',
+        # './balanced_trainingset/cvrp_clustered_cap30-60_n30-60_num20_train.pkl',
         # './balanced_trainingset/cvrp_clustered_cap30-60_n80-120_num20_train.pkl',
         # './balanced_trainingset/cvrp_clustered_cap30-60_n180-200_num20_train.pkl',
         # './balanced_trainingset/cvrp_clustered_cap90-110_n80-120_num20_train.pkl',
@@ -38,7 +39,8 @@ def main(run_id):
     ]
 
     testing_set = [
-        './testing_set/cvrp_clustered_cap30-60_n30-60_num10_test.pkl',
+        './testing_set/cvrp_uniform_cap100-300_n500-800_num10_test.pkl',
+        # './testing_set/cvrp_clustered_cap30-60_n30-60_num10_test.pkl',
         # './testing_set/cvrp_clustered_cap30-60_n80-120_num10_test.pkl',
         # './testing_set/cvrp_clustered_cap30-60_n180-200_num10_test.pkl',
         # './testing_set/cvrp_clustered_cap90-110_n80-120_num10_test.pkl',
@@ -53,7 +55,7 @@ def main(run_id):
     ]
 
     task = CVRPSEvaluation(
-        timeout_seconds=120,
+        timeout_seconds=300,
         run_mode='Training',
         training_datasets=balanced_training_set,
         testing_datasets=testing_set,
@@ -114,4 +116,4 @@ def main(run_id):
     method.run(mode='Training')
 
 if __name__ == '__main__':
-    main(0)
+    main(500)

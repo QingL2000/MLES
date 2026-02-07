@@ -554,11 +554,16 @@ class MMEoH:
             self._profiler.finish()
 
     # 修改函数签名，增加 top_k 参数 (默认为 None，表示全部运行)
-    def _using_flow(self, worst_case_percent=10, top_k=None):
+    def _using_flow(self, worst_case_percent=10, top_k=None, max_gen=None):
+        """
+        Args:
+            worst_case_percent: 统计最后百分之几的情况
+            top_k: 从读取的文件中筛选前 K 个算法
+            max_gen: 限制最高代数。如果为 None，则读取目录下最大的代数。
+        """
         print(f"🔍 Loading model from {self._profiler._log_dir}...")
         designed_results_path = os.path.join(self._profiler._log_dir, 'population')
 
-        # 1. Define the pattern to match 'pop_X.json' and capture 'X'
         pattern = re.compile(r'^pop_(\d+)\.json$')
 
         max_x = -1
@@ -569,24 +574,27 @@ class MMEoH:
             print(f"Error: Directory not found: {designed_results_path}")
             return  # Or raise an Exception
 
-        # 3. Iterate over files in the directory
+        # --- 修改后的文件搜索逻辑 ---
         for filename in os.listdir(designed_results_path):
             match = pattern.match(filename)
-
-            # 4. If the filename matches
             if match:
-                # Extract the number (group 1) and convert to int
                 current_x = int(match.group(1))
 
-                # 5. Check if it's the largest number found so far
+                # 如果指定了 max_gen，则忽略超过该代数的文件
+                if max_gen is not None and current_x > max_gen:
+                    continue
+
+                # 在符合条件的范围内寻找最大的代数
                 if current_x > max_x:
                     max_x = current_x
                     latest_file = filename
+        # --------------------------
 
         # 6. Check if any matching file was found
         if latest_file is None:
-            print(f"Error: No 'pop_x.json' files found in {designed_results_path}")
-            return  # Or raise an Exception
+            limit_msg = f" within max_gen={max_gen}" if max_gen else ""
+            print(f"Error: No valid 'pop_x.json' files found{limit_msg} in {designed_results_path}")
+            return
 
         # 7. Construct the full path to the correct file
         full_path_to_file = os.path.join(designed_results_path, latest_file)
@@ -729,9 +737,8 @@ class MMEoH:
             f'There are {len(ins_to_be_solve_set)} instances to solve. \nSuccessfully solved {len(valid_scores)} instances, with an average score of {final_results["average_score_of_all_instances"]}.')
 
     # 修改函数签名，增加 top_k 参数 (默认为 None，表示全部运行)
-    # 修改函数签名，增加 top_k 参数 (默认为 None，表示全部运行)
-    def _Multi_using_flow(self, designed_results_paths: List[str], top_k=1, worst_case_percent=10, cvrplib_which='A',
-                          who='DontKnow'):
+    def _Multi_using_flow(self, designed_results_paths: List[str], top_k=1, worst_case_percent=10,
+                          cvrplib_which='A', who='DontKnow', max_gen=None):  # <--- 1. 增加参数
         """
         Args:
             designed_results_paths (List[str]): 包含多个实验日志根目录的列表。
@@ -759,10 +766,17 @@ class MMEoH:
             max_x = -1
             latest_file = None
 
+            # --- 2. 这里的循环逻辑加入 max_gen 限制 ---
             for filename in os.listdir(population_dir):
                 match = pattern.match(filename)
                 if match:
                     current_x = int(match.group(1))
+
+                    # 如果超过了限制的代数，直接跳过
+                    if max_gen is not None and current_x > max_gen:
+                        continue
+
+                    # 寻找限制范围内的最大代数
                     if current_x > max_x:
                         max_x = current_x
                         latest_file = filename
