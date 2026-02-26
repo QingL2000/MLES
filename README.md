@@ -52,11 +52,11 @@ In this repository, we showcase the application of MLES for automated policy dis
 
 ## ⚙️ Requirements & Installation
 
-You can quickly set up the required Python environment using the provided `environment.yml` file.
+You can quickly set up the required Python environment using the provided `environment.yaml` file.
 
 1.  **Create the Conda environment**:
     ```bash
-    conda env create -f environment.yml
+    conda env create -f environment.yaml
     ```
 
 2.  **Activate the environment**:
