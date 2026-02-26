@@ -1,12 +1,9 @@
 <div align="center">
 <h1 align="center">MLES: Multimodal LLM-Assisted Evolutionary Search for Programmatic Control Policies</h1>
 
-
 [![Venue](https://img.shields.io/badge/Venue-ICLR%202026-blue.svg)](https://iclr.cc/)
 [![Python](https://img.shields.io/badge/Python-3.11%2B-blue.svg)]()
 [![License](https://img.shields.io/badge/License-MIT-green.svg)]()
-
-
 
 <h3 align="center">Automated discovery of high-performing, interpretable, and verifiable control policies</h3>
 
@@ -23,22 +20,31 @@
 
 ## Introduction 📖
 
-Transparency and high performance are essential goals in designing control policies, particularly for safety-critical tasks. 
-MELS (Multimodal LLM-assisted Evolutionary Search) combines the powerful reasoning and generation capabilities of Multimodal Large Language Models (MLLMs) with the iterative optimization strengths of evolutionary computation, **enabling the automatic design of high-performing and transparent control policies**. 
+Transparency and high performance are essential goals in designing control policies, particularly for safety-critical tasks. While Deep Reinforcement Learning (DRL) algorithms have dominated this space, their **"black-box"** nature makes them difficult to trust, debug, and safely deploy.
 
+To address this challenge, we introduce **MLES** (Multimodal LLM-assisted Evolutionary Search). MLES offers a paradigm shift from opaque neural networks to **programmatic white-box policies**. It combines the advanced vision-language reasoning and code generation capabilities of Multimodal Large Language Models (MLLMs) with the iterative optimization strengths of evolutionary computation.
 
-MLES is designed to mimic how human experts develop policies. Unlike traditional methods that rely blindly on scalar rewards, MLES **integrates visual feedback-driven behavior analysis** into the policy generation process. By scrutinizing execution traces (visualized behaviors), it identifies *why* a policy failed or succeeded and intelligently refines the programmatic policies with targeted improvements.
-
-### ✨ Key Advantages
-
-1. **Completely Transparent Control Policies**: Policies are directly synthesized as human-readable Python programs, making their logic entirely transparent and easily understandable.
-2. **Traceable & Diagnostic Policy Design**: Every step of the policy evolution is meticulously recorded. The evolutionary process is driven by behavioral evidence, transforming stochastic trial-and-error into a grounded, diagnostic refinement process.
-3. **Competitive Performance**: MLES achieves performance comparable to **Proximal Policy Optimization (PPO)** in terms of both policy search efficiency and the performance of the generated policies across standard control tasks.
-
+**How it works:** MLES is designed to mimic how human experts develop policies. Unlike traditional DRL methods that rely blindly on scalar rewards, or standard LLM-assisted Evolutionary Search (LES) methods that lack visual context, MLES **integrates visual feedback-driven behavior analysis** into the policy generation process. By scrutinizing execution traces to generate **Behavioral Evidence (BE)**, MLES identifies *why* a policy failed or succeeded (e.g., diagnosing "reward hacking" or late braking) and intelligently refines the programmatic policies with targeted, code-level improvements.
 
 <p align="center">
 <img src="./figs/MLES_0919.png" alt="Car Racing Evolution Process Comparison" style="width:80%;" />
 </p>
+
+### 🆚 DRL vs. LES vs. MLES
+
+| Feature | 🤖 Traditional DRL (e.g., PPO/DQN) | 📝 Standard LES (e.g., EoH)             | 🚀 MLES (Ours) |
+| :--- | :--- | :--- | :--- |
+| **Policy Representation** | Opaque Neural Networks | **Human-readable Python Code** | **Human-readable Python Code** |
+| **Optimization Guide** | Scalar Rewards | Scalar Metrics                          | **Visual Feedback + Scalar Metrics** |
+| **Policy Discovery Process**| Black-box, hard to trace | Trial-and-error, lacks diagnostic depth | **Diagnostic, step-by-step traceable** |
+| **Performance** | High | Moderate                                | **High (Comparable to PPO)** |
+
+### ✨ Key Advantages
+
+1. **Completely Transparent Control Policies**: Policies are directly synthesized as human-readable Python programs, making their logic entirely transparent, modular, and easily understandable.
+2. **Traceable & Diagnostic Policy Design**: Every step of the policy evolution is meticulously recorded. The evolutionary process is driven by behavioral evidence, transforming stochastic trial-and-error into a grounded, diagnostic refinement process.
+3. **Competitive Performance**: MLES achieves performance comparable to **Proximal Policy Optimization (PPO)** across standard control tasks (e.g., Lunar Lander and Car Racing), while offering significantly better sample efficiency in policy search.
+4. **Knowledge Transfer & Reuse**: Because policies are represented as code, insights and logic can be easily transferred to new instances or modified by human experts in a collaborative loop.
 
 In this repository, we showcase the application of MLES for automated policy discovery using the **Lunar Lander** and **Car Racing** environments as illustrative examples. We provide the discovered policies from our experiments and offer tools to analyze the evolutionary process.
 
@@ -64,7 +70,7 @@ You can quickly set up the required Python environment using the provided `envir
 
 ### Quick Start:
 
-> [!Note]
+> [!NOTE]
 > Before running the script, you'll need to configure your Large Language Model (LLM) API settings. Here's an example configuration for DeepSeek:
 >
 > 1.  Set `host`: `'api.deepseek.com'`
@@ -124,7 +130,7 @@ method = MLES(llm=llm,
 method.run()
 ```
 
-In just about **an hour** of automated discovery, MELS can provide you with a near-perfect control policy for Car Racing!
+In just about **an hour** of automated discovery, MLES can provide you with a near-perfect control policy for Car Racing!
 
 <p align="center">
 <img src="./figs/performance on test.png" alt="Car Racing Performance" style="width:90%;" />
@@ -136,7 +142,7 @@ The discovery process is completely traceable and verifiable, offering insights 
 <img src="./figs/Interpretable evolutionary process_v4.png" alt="Interpretable Evolutionary Process" style="width:90%;" />
 </p>
 
-Compared to traditional DRL algorithms like PPO and DQN, MELS demonstrates remarkably efficient algorithm discovery:
+Compared to traditional DRL algorithms like PPO and DQN, MLES demonstrates remarkably efficient algorithm discovery:
 
 <p align="center">
 <img src="./figs/car_racing_evolurion_process.png" alt="Car Racing Evolution Process Comparison" style="width:50%;" />
