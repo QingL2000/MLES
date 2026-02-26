@@ -10,7 +10,7 @@ from llm4ad.method.mles import MLESProfiler
 
 def main(using_algo_designed_path):
     llm = HttpsApi(host='api.bltcy.ai',  # your host endpoint, e.g., api.openai.com/v1/completions, api.deepseek.com
-                   key='sk-qMAtcWpKnF64zZxWqyLcqXRQYEtwnyiriaB0nR5GBldQ7S0A',  # your key, e.g., sk-abcdefghijklmn
+                   key='sk-xxx',  # your key, e.g., sk-abcdefghijklmn
                    model='gpt-4o-mini',  # your llm, e.g., gpt-3.5-turbo, deepseek-chat
                    timeout=120)
     log_dir = f'logs/MLES'  # Use run_id to avoid overwriting logs
@@ -60,7 +60,7 @@ def main(using_algo_designed_path):
 
 if __name__ == '__main__':
     testing_paths = [
-        r"C:\0_QL_work\014_mmeoh\LLM4AD_MLES\LLM4AD\example\mles_moonlander\logs\MLES\20260208_201339",
+        r"..\LLM4AD_MLES\LLM4AD\example\mles_moonlander\logs\MLES\20260226_151612",
     ]
 
     for path in testing_paths:
