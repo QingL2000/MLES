@@ -9,10 +9,11 @@ from llm4ad.method.mles import MLESProfiler
 
 
 def main():
-    llm = HttpsApi(host='api.bltcy.ai',  # your host endpoint, e.g., api.openai.com/v1/completions, api.deepseek.com
-                   key='sk-qMAtcWpKnF64zZxWqyLcqXRQYEtwnyiriaB0nR5GBldQ7S0A',  # your key, e.g., sk-abcdefghijklmn
-                   model='gpt-4o-mini',  # your llm, e.g., gpt-3.5-turbo, deepseek-chat
+    llm = HttpsApi(host='xxx',  # your host endpoint, e.g., api.openai.com/v1/completions, api.deepseek.com
+                   key='xxx',  # your key, e.g., sk-abcdefghijklmn
+                   model='xxx',  # your llm, e.g., gpt-3.5-turbo, deepseek-chat
                    timeout=120)
+
     log_dir = f'logs/MLES'
 
     seeds = [1]
