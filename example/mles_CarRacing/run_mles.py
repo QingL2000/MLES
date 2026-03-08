@@ -10,10 +10,10 @@ from llm4ad.method.mles import MLESProfiler
 
 def main():
     llm = HttpsApi(host='api.bltcy.ai',  # your host endpoint, e.g., api.openai.com/v1/completions, api.deepseek.com
-                   key='sk-xxxx',  # your key, e.g., sk-abcdefghijklmn
+                   key='sk-qMAtcWpKnF64zZxWqyLcqXRQYEtwnyiriaB0nR5GBldQ7S0A',  # your key, e.g., sk-abcdefghijklmn
                    model='gpt-4o-mini',  # your llm, e.g., gpt-3.5-turbo, deepseek-chat
                    timeout=120)
-    log_dir = f'logs/MLES'  # Use run_id to avoid overwriting logs
+    log_dir = f'logs/MLES'
 
     seeds = [1]
     instance_set = {}
@@ -22,8 +22,8 @@ def main():
 
     # Using
     using_algo_designed_path = ""
-    # Using_seeds = [i for i in range(20, 60)]
     Using_seeds = [i for i in range(10, 20)]
+
     # Using_seeds = seeds
     ins_to_be_solve_set = {}
     for id, seed in enumerate(Using_seeds):
@@ -36,7 +36,6 @@ def main():
                                ins_to_be_solve_set=ins_to_be_solve_set,
                                objective_value=100)
 
-    # 定义JSON文件路径
     seedpath = r'pop_init.json'
 
     method = MLES(llm=llm,
