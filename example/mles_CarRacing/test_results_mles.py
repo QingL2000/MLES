@@ -13,10 +13,12 @@ def main(using_algo_designed_path):
     # 1. LLM Configuration
     # Even in testing mode, the MLES framework initializes the LLM object.
     # =========================================================================
-    llm = HttpsApi(host='xxx',  # your host endpoint, e.g., api.openai.com/v1/completions, api.deepseek.com
-                   key='xxx',  # your key, e.g., sk-abcdefghijklmn
-                   model='xxx',  # your llm, e.g., gpt-3.5-turbo, deepseek-chat
-                   timeout=120)
+    llm = HttpsApi(host='xxxx',
+                   # Replace with your API endpoint (e.g., api.openai.com/v1/completions, api.deepseek.com)
+                   key='xxx',  # Replace with your actual API key
+                   model='xxx',  # Choose your model (e.g., gpt-4o, deepseek-chat)
+                   timeout=120  # Maximum waiting time for LLM response
+                   )
 
     log_dir = ''
 
@@ -28,19 +30,13 @@ def main(using_algo_designed_path):
     # We still define the training seeds here to ensure the environment
     # configuration exactly matches what the policy was trained on.
 
-    training_seeds = [6, 9, 17, 29, 57,
-             44, 18, 69, 26, 68,
-             65, 23, 51, 93, 16,
-             87, 92, 90, 22, 73,
-             60, 10, 19, 97, 11,
-             14, 99, 98, 8, 28,
-             43, 56, 89, 15, 74]
+    training_seeds = [1]
     instance_set = {id: seed for id, seed in enumerate(training_seeds)}
 
     # Testing Seeds (The Real Test):
     # A completely new set of seeds (100-149) that the evolved policy has NEVER seen.
     # This tests the true generalization ability of the programmatic policy.
-    testing_seeds = [i for i in range(100, 150)]
+    testing_seeds = [i for i in range(10, 20)]
     ins_to_be_solve_set = {id: seed for id, seed in enumerate(testing_seeds)}
 
     # =========================================================================
@@ -88,10 +84,10 @@ if __name__ == '__main__':
     # =========================================================================
     # 🚀 LOAD YOUR TRAINED POLICIES HERE
     # Replace the path below with the actual log directory generated during Training.
-    # Example format: "logs/MLES_gemini/YYYYMMDD_HHMMSS"
+    # Example format: "logs/MLES/YYYYMMDD_HHMMSS"
     # =========================================================================
     testing_paths = [
-        r"..\LLM4AD_MLES\LLM4AD\example\mles_moonlander\logs\MLES\20260226_151612",     # <-- Update this path to your specific run!
+        r"...\MLES\example\mles_CarRacing\logs\MLES\20260308_214818",     # <-- Update this path to your specific run!
     ]
 
     for path in testing_paths:
