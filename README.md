@@ -47,7 +47,7 @@ MLES is designed to mimic how human experts develop policies:
 3. **Diagnostic Refinement:** By analyzing the BE images, the MLLM identifies *why* a policy failed (e.g., "reward hacking" or late braking) and implements targeted, code-level improvements.
 
 <p align="center">
-<img src="./readme_figs/MLES_0919.png" alt="Car Racing Evolution Process Comparison" style="width:80%;" />
+<img src="./figs/MLES_0919.png" alt="Car Racing Evolution Process Comparison" style="width:80%;" />
 </p>
 
 ### 🆚 DRL vs. LES vs. MLES
@@ -186,19 +186,19 @@ method.run()
 **The Results**
 
 <p align="center">
-<img src="./readme_figs/performance on test.png" alt="Car Racing Performance" style="width:90%;" />
+<img src="./figs/performance on test.png" alt="Car Racing Performance" style="width:90%;" />
 </p>
 
 The discovery process is completely traceable and verifiable, offering insights into how policies evolve:
 
 <p align="center">
-<img src="./readme_figs/Interpretable evolutionary process_v4.png" alt="Interpretable Evolutionary Process" style="width:90%;" />
+<img src="./figs/Interpretable evolutionary process_v4.png" alt="Interpretable Evolutionary Process" style="width:90%;" />
 </p>
 
 Compared to traditional DRL algorithms like PPO and DQN, MLES demonstrates remarkably efficient algorithm discovery:
 
 <p align="center">
-<img src="./readme_figs/car_racing_evolurion_process.png" alt="Car Racing Evolution Process Comparison" style="width:50%;" />
+<img src="./figs/car_racing_evolurion_process.png" alt="Car Racing Evolution Process Comparison" style="width:50%;" />
 </p>
 
 ---
