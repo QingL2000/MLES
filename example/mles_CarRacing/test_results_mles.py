@@ -2,7 +2,7 @@ import sys
 # Add the project root to the system path.
 sys.path.append('../../')  # This is for finding all the modules
 
-from llm4ad.task.machine_learning.moon_lander import MoonLanderEvaluation, moon_lander_feature
+from llm4ad.task.machine_learning.car_racing import RacingCarEvaluation
 from llm4ad.tools.llm.llm_api_https import HttpsApi
 from llm4ad.method.mles import MLES
 from llm4ad.method.mles import MLESProfiler
@@ -48,9 +48,11 @@ def main(using_algo_designed_path):
     # Notice the run_mode is set to 'Using' instead of 'Training'.
     # =========================================================================
     run_mode = 'Using'  # CRITICAL: Sets framework to evaluation mode
-    task = MoonLanderEvaluation(whocall='mles', instance_set=instance_set, run_mode=run_mode,
-                                ins_to_be_solve_set=ins_to_be_solve_set, feature_pipeline=moon_lander_feature,
-                                objective_value=230)
+    task = RacingCarEvaluation(whocall='mles',
+                               run_mode=run_mode,
+                               instance_set=instance_set,
+                               ins_to_be_solve_set=ins_to_be_solve_set,
+                               objective_value=100)
 
     seedpath = ''
 
