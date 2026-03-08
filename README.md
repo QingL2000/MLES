@@ -47,7 +47,7 @@ MLES is designed to mimic how human experts develop policies:
 3. **Diagnostic Refinement:** By analyzing the BE images, the MLLM identifies *why* a policy failed (e.g., "reward hacking" or late braking) and implements targeted, code-level improvements.
 
 <p align="center">
-<img src="./figs/MLES_0919.png" alt="Car Racing Evolution Process Comparison" style="width:80%;" />
+<img src="./readme_figs/MLES_0919.png" alt="Car Racing Evolution Process Comparison" style="width:80%;" />
 </p>
 
 ### 🆚 DRL vs. LES vs. MLES
@@ -103,81 +103,105 @@ from llm4ad.tools.llm.llm_api_https import HttpsApi
 from llm4ad.method.mles import MLES
 from llm4ad.method.mles import MLESProfiler
 
-llm = HttpsApi(host='xxx',  # your host endpoint, e.g., api.openai.com/v1/completions, api.deepseek.com
-               key='sk-xxxx',  # your key, e.g., sk-abcdefghijklmn
-               model='xxx',  # your llm, e.g., gpt-3.5-turbo, deepseek-chat
-               timeout=120)
-log_dir = f'logs/MLES'  # Use run_id to avoid overwriting logs
+# =========================================================================
+# 1. LLM Configuration
+# Set up the Large Language Model that will act as our "Algorithm Designer".
+# =========================================================================
+llm = HttpsApi(
+    host='xxx',  # Replace with your API endpoint (e.g., api.openai.com, api.deepseek.com)
+    key='sk-YOUR_API_KEY',  # Replace with your actual API key (Never commit real keys to GitHub!)
+    model='xxx',  # Choose your model (e.g., gpt-4o, deepseek-chat)
+    timeout=120  # Maximum waiting time for LLM response
+)
 
-seeds = [1]
-instance_set = {}
-for id, seed in enumerate(seeds):
-    instance_set[id] = seed
+# Directory where evolution logs, generated policies, and visual evidence will be saved
+log_dir = f'logs/MLES'
 
-# Using
-using_algo_designed_path = ""
-# Using_seeds = [i for i in range(20, 60)]
-Using_seeds = [i for i in range(10, 20)]
-# Using_seeds = seeds
-ins_to_be_solve_set = {}
-for id, seed in enumerate(Using_seeds):
-    ins_to_be_solve_set[id] = seed
+# =========================================================================
+# 2. Environment Configuration (Training & Testing Instances)
+# Define the random seeds to generate distinct race tracks.
+# =========================================================================
 
-run_mode = 'Training'  # Training, Using, Combined
+# Training Seeds: The tracks used during the evolutionary search.
+# Using a single seed [1] here for a fast baseline experiment.
+training_seeds = [1]
+instance_set = {id: seed for id, seed in enumerate(training_seeds)}
+
+# Testing Seeds: Unseen tracks used purely for evaluating the final policy
+# (Only active if run_mode is set to 'Using' or 'Combined')
+testing_seeds = [i for i in range(10, 20)]
+ins_to_be_solve_set = {id: seed for id, seed in enumerate(testing_seeds)}
+
+# =========================================================================
+# 3. Task Evaluation Setup
+# Link the environment instances to our custom Car Racing evaluator.
+# =========================================================================
+run_mode = 'Training'  # Options: 'Training' (evolution), 'Using' (testing), 'Combined'
+using_algo_designed_path = ""   # Path to a saved policy if run_mode is 'Using'
+
 task = RacingCarEvaluation(whocall='mles',
                            run_mode=run_mode,
                            instance_set=instance_set,
                            ins_to_be_solve_set=ins_to_be_solve_set,
                            objective_value=100)
 
-# 定义JSON文件路径
+# Initial population file containing base heuristic code to kickstart evolution
 seedpath = r'pop_init.json'
 
-method = MLES(llm=llm,
-              profiler=MLESProfiler(log_dir=log_dir, log_style='complex', run_mode=run_mode,
-                                    using_algo_designed_path=using_algo_designed_path),
-              evaluation=task,
-              max_sample_nums=100,
-              max_generations=None,
-              pop_size=16,
-              num_samplers=8,
-              num_evaluators=8,
-              debug_mode=False,
-              operators=('e1', 'e2', 'm1_M', 'm2_M'),  # ('e1', 'e2', 'm1_M', 'm2_M')
-              seed_path=seedpath
-              )
+# =========================================================================
+# 4. MLES Algorithm Configuration & Execution
+# =========================================================================
+method = MLES(
+    llm=llm,
+    profiler=MLESProfiler(
+        log_dir=log_dir,
+        log_style='complex',
+        run_mode=run_mode,
+        using_algo_designed_path=using_algo_designed_path
+    ),
+    evaluation=task,
 
+    # --- Evolutionary Hyperparameters ---
+    max_sample_nums=100,  # Total number of policies to sample/evaluate
+    max_generations=None,  # Alternative stopping criterion (None = rely on max_sample_nums)
+    pop_size=16,  # Number of policies kept in the active population
+
+    # --- System Hyperparameters ---
+    num_samplers=8,  # Number of concurrent threads for LLM calls
+    num_evaluators=8,  # Number of concurrent threads for environment evaluations
+    debug_mode=False,
+
+    # --- Mutation & Crossover Operators ---
+    # e1/e2: Exploration, m1_M/m2_M: Visual-feedback-driven mutations
+    operators=('e1', 'e2', 'm1_M', 'm2_M'),
+
+    seed_path=seedpath
+)
+
+# Start the automated discovery process!
+print(f"Starting MLES on Car Racing. Logs will be saved to: {log_dir}")
 method.run()
 ```
 
 **The Results**
 
 <p align="center">
-<img src="./figs/performance on test.png" alt="Car Racing Performance" style="width:90%;" />
+<img src="./readme_figs/performance on test.png" alt="Car Racing Performance" style="width:90%;" />
 </p>
 
 The discovery process is completely traceable and verifiable, offering insights into how policies evolve:
 
 <p align="center">
-<img src="./figs/Interpretable evolutionary process_v4.png" alt="Interpretable Evolutionary Process" style="width:90%;" />
+<img src="./readme_figs/Interpretable evolutionary process_v4.png" alt="Interpretable Evolutionary Process" style="width:90%;" />
 </p>
 
 Compared to traditional DRL algorithms like PPO and DQN, MLES demonstrates remarkably efficient algorithm discovery:
 
 <p align="center">
-<img src="./figs/car_racing_evolurion_process.png" alt="Car Racing Evolution Process Comparison" style="width:50%;" />
+<img src="./readme_figs/car_racing_evolurion_process.png" alt="Car Racing Evolution Process Comparison" style="width:50%;" />
 </p>
 
 ---
-
-## 📊 Analyzing Your MLES Results
-We provide built-in tools in the analysis_results directory to help you deeply understand the evolutionary process.
-
-🧬 Track Policy Ancestry (`analysis_family_of_one_individual_v2.py`):
-Use this script to trace the entire lineage of any specific policy you're interested in. This allows you to explore its "family tree" and understand exactly how behavioral visual feedback drove its evolutionary path.
-
-📈 Compare Performance & Efficiency (`LES_RL_behavior_v3.py` / `LES_method_behavior.py`):
-Compare the performance and convergence efficiency of different methods on policy discovery tasks, giving you clear insights into MLES's advantages over traditional DRL baselines.
 
 ## 🛠️ Adapting MLES to Your Custom Scenarios
 
@@ -203,6 +227,36 @@ Your `evaluation.py` must address three key areas:
 3.  **Result Aggregation (`evaluate`):** To ensure compatibility with the MLES framework, the returned dictionary **must contain two specific keys**:
     * `'score'`: The scalar fitness value of the policy.
     * `'image'`: The base64 string of the generated behavioral evidence.
+
+---
+
+## 📊 Analyzing Your MLES Processes and Results
+We provide built-in tools in the analysis_results directory to help you deeply understand the evolutionary process.
+
+🧬 Track Policy Ancestry (`analysis_family_of_one_individual_v2.py`):
+Use this script to trace the entire lineage of any specific policy you're interested in. This allows you to explore its "family tree" and understand exactly how behavioral visual feedback drove its evolutionary path.
+
+📈 Compare Performance & Efficiency (`LES_RL_behavior_v3.py` / `LES_method_behavior.py`):
+Compare the performance and convergence efficiency of different methods on policy discovery tasks, giving you clear insights into MLES's advantages over traditional DRL baselines.
+
+---
+
+## 🧪 Evaluating Generalization: The "Using" Mode
+
+Once you have successfully discovered a high-performing control policy using the `'Training'` mode, you will naturally want to evaluate its robustness on completely new, unseen environments. MLES provides a dedicated **`Using`** mode specifically for this purpose.
+
+To test your generated policies, simply adjust your execution script:
+
+1. **Switch the Run Mode:** Set `run_mode = 'Using'`.
+2. **Point to Your Saved Policy:** Update the `using_algo_designed_path` variable with the path to your successful training log directory (e.g., `logs/MLES/YYYYMMDD_HHMMSS`).
+3. **Define Unseen Seeds:** Provide a new set of random seeds for the `ins_to_be_solve_set` that the policy has *never* encountered during training.
+4. **Execute the Evaluation Flow:** Call `method.using_flow(worst_case_percent=10, top_k=1)` instead of `method.run()`. 
+
+**Why `using_flow` is powerful:** This dedicated function doesn't just run the code; it automatically extracts the `top_k` best algorithms from your training logs, evaluates them across all testing seeds, and explicitly isolates the `worst_case_percent` (e.g., the bottom 10% of failure cases). This allows you to rigorously analyze the extreme edge cases where your white-box policy struggles.
+
+*(Tip: We provide ready-to-use evaluation scripts, such as `test_moon_lander.py` and `test_car_racing.py`, in our repository to help you get started immediately!)*
+
+---
 
 ## ✨ Citation
 If you find our work helpful, please consider citing our paper:
